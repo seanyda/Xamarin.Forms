@@ -3,20 +3,17 @@ using System.ComponentModel;
 using Android.App;
 using Android.Content;
 using Android.Util;
-using Android.Widget;
 using Android.Text.Format;
 using ATimePicker = Android.Widget.TimePicker;
-using Object = Java.Lang.Object;
-using AView = Android.Views.View;
 using Android.OS;
+using Android.Widget;
 
 namespace Xamarin.Forms.Platform.Android
 {
-	public class TimePickerRenderer : ViewRenderer<TimePicker, EditText>, TimePickerDialog.IOnTimeSetListener
+	public class TimePickerRenderer : ViewRenderer<TimePicker, EditText>, TimePickerDialog.IOnTimeSetListener, IPickerRenderer
 	{
 		AlertDialog _dialog;
 		TextColorSwitcher _textColorSwitcher;
-		protected bool _is24HourFormat;
 
 		bool Is24HourView
 		{
@@ -41,7 +38,6 @@ namespace Xamarin.Forms.Platform.Android
 			ElementController.SetValueFromRenderer(TimePicker.TimeProperty, new TimeSpan(hourOfDay, minute, 0));
 
 			ElementController.SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, false);
-			Control.ClearFocus();
 
 			if (Forms.IsLollipopOrNewer)
 				_dialog.CancelEvent -= OnCancelButtonClicked;
@@ -51,7 +47,7 @@ namespace Xamarin.Forms.Platform.Android
 
 		protected override EditText CreateNativeControl()
 		{
-			return new EditText(Context) { Focusable = false, Clickable = true, Tag = this };
+			return new PickerEditText(Context, this);
 		}
 
 		protected override void OnElementChanged(ElementChangedEventArgs<TimePicker> e)
@@ -62,7 +58,6 @@ namespace Xamarin.Forms.Platform.Android
 			{
 				var textField = CreateNativeControl();
 
-				textField.SetOnClickListener(TimePickerListener.Instance);
 				SetNativeControl(textField);
 
 				var useLegacyColorManagement = e.NewElement.UseLegacyColorManagement();
@@ -94,12 +89,11 @@ namespace Xamarin.Forms.Platform.Android
 			base.OnFocusChangeRequested(sender, e);
 
 			if (e.Focus)
-				OnClick();
+				CallOnClick();
 			else if (_dialog != null)
 			{
 				_dialog.Hide();
 				ElementController.SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, false);
-				Control.ClearFocus();
 
 				if (Forms.IsLollipopOrNewer)
 					_dialog.CancelEvent -= OnCancelButtonClicked;
@@ -110,7 +104,7 @@ namespace Xamarin.Forms.Platform.Android
 
 		protected virtual TimePickerDialog CreateTimePickerDialog(int hours, int minutes)
 		{
-			var dialog = new TimePickerDialog(Context, this, hours, minutes, _is24HourFormat);
+			var dialog = new TimePickerDialog(Context, this, hours, minutes, Is24HourView);
 
 			if (Forms.IsLollipopOrNewer)
 				dialog.CancelEvent += OnCancelButtonClicked;
@@ -118,8 +112,13 @@ namespace Xamarin.Forms.Platform.Android
 			return dialog;
 		}
 
-		void OnClick()
+		void IPickerRenderer.OnClick()
 		{
+			if (_dialog != null && _dialog.IsShowing)
+			{
+				return;
+			}
+
 			TimePicker view = Element;
 			ElementController.SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, true);
 
@@ -147,20 +146,6 @@ namespace Xamarin.Forms.Platform.Android
 		void UpdateTextColor()
 		{
 			_textColorSwitcher?.UpdateTextColor(Control, Element.TextColor);
-		}
-
-		class TimePickerListener : Object, IOnClickListener
-		{
-			public static readonly TimePickerListener Instance = new TimePickerListener();
-
-			public void OnClick(AView v)
-			{
-				var renderer = v.Tag as TimePickerRenderer;
-				if (renderer == null)
-					return;
-
-				renderer.OnClick();
-			}
 		}
 	}
 }

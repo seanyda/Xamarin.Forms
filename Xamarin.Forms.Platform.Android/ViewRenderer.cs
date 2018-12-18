@@ -26,7 +26,7 @@ namespace Xamarin.Forms.Platform.Android
 		}
 	}
 
-	public abstract class ViewRenderer<TView, TNativeView> : VisualElementRenderer<TView>, IViewRenderer, AView.IOnFocusChangeListener where TView : View where TNativeView : AView
+	public abstract class ViewRenderer<TView, TNativeView> : VisualElementRenderer<TView>, IViewRenderer, ITabStop, AView.IOnFocusChangeListener where TView : View where TNativeView : AView
 	{
 		protected ViewRenderer(Context context) : base(context)
 		{
@@ -55,6 +55,8 @@ namespace Xamarin.Forms.Platform.Android
 		internal bool HandleKeyboardOnFocus;
 
 		public TNativeView Control { get; private set; }
+
+		AView ITabStop.TabStop => Control;
 
 		void IViewRenderer.MeasureExactly()
 		{
@@ -137,28 +139,33 @@ namespace Xamarin.Forms.Platform.Android
 				if (Control != null && ManageNativeControlLifetime)
 				{
 					Control.OnFocusChangeListener = null;
-					RemoveView(Control);
-					Control.Dispose();
-					Control = null;
 				}
+			}
 
+			base.Dispose(disposing);
+
+			if (disposing && !_disposed)
+			{
 				if (_container != null && _container != this)
 				{
-					_container.RemoveFromParent();
-					_container.Dispose();
+					if (_container.Handle != IntPtr.Zero)
+					{
+						_container.RemoveFromParent();
+						_container.Dispose();
+					}
 					_container = null;
 				}
 
 				if (Element != null && _focusChangeHandler != null)
 				{
 					Element.FocusChangeRequested -= _focusChangeHandler;
-					_focusChangeHandler = null;
+				
 				}
-
+				_focusChangeHandler = null;
 				_disposed = true;
 			}
 
-			base.Dispose(disposing);
+			
 		}
 
 		protected override void OnElementChanged(ElementChangedEventArgs<TView> e)
@@ -259,6 +266,8 @@ namespace Xamarin.Forms.Platform.Android
 				var handler = new Handler(looper);
 				handler.Post(() =>
 				{
+					if (Control is IPopupTrigger popupElement)
+						popupElement.ShowPopupOnFocus = true;
 					Control?.RequestFocus();
 				});
 			}

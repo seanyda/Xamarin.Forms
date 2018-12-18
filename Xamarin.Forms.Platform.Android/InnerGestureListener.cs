@@ -9,9 +9,9 @@ namespace Xamarin.Forms.Platform.Android
 {
 	internal class InnerGestureListener : Object, GestureDetector.IOnGestureListener, GestureDetector.IOnDoubleTapListener
 	{
-		readonly TapGestureHandler _tapGestureHandler;
-		readonly PanGestureHandler _panGestureHandler;
-		readonly SwipeGestureHandler _swipeGestureHandler;
+		TapGestureHandler _tapGestureHandler;
+		PanGestureHandler _panGestureHandler;
+		SwipeGestureHandler _swipeGestureHandler;
 		bool _isScrolling;		
 		float _lastX;
 		float _lastY;
@@ -179,6 +179,10 @@ namespace Xamarin.Forms.Platform.Android
 
 			if (disposing)
 			{
+				_panGestureHandler = null;
+				_swipeGestureHandler = null;
+				_tapGestureHandler = null;
+
 				_tapDelegate = null;
 				_tapGestureRecognizers = null;
 				_scrollDelegate = null;
@@ -217,7 +221,8 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			if (_isScrolling && _scrollCompleteDelegate != null)
 				_scrollCompleteDelegate();
-			if (_swipeCompletedDelegate != null)
+
+			if (_isScrolling && _swipeCompletedDelegate != null)
 				_swipeCompletedDelegate();
 
 			_isScrolling = false;

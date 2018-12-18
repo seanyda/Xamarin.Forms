@@ -10,7 +10,7 @@ using RectangleF = CoreGraphics.CGRect;
 
 namespace Xamarin.Forms.Platform.iOS
 {
-	public class Platform : BindableObject, IPlatform, INavigation, IDisposable
+	public class Platform : BindableObject, INavigation, IDisposable
 	{
 		internal static readonly BindableProperty RendererProperty = BindableProperty.CreateAttached("Renderer", typeof(IVisualElementRenderer), typeof(Platform), default(IVisualElementRenderer),
 			propertyChanged: (bindable, oldvalue, newvalue) =>
@@ -166,7 +166,6 @@ namespace Xamarin.Forms.Platform.iOS
 			EndEditing();
 
 			_modals.Add(modal);
-			modal.Platform = this;
 
 			modal.DescendantRemoved += HandleChildRemoved;
 
@@ -180,7 +179,7 @@ namespace Xamarin.Forms.Platform.iOS
 			throw new InvalidOperationException("RemovePage is not supported globally on iOS, please use a NavigationPage.");
 		}
 
-		SizeRequest IPlatform.GetNativeSize(VisualElement view, double widthConstraint, double heightConstraint)
+		public static SizeRequest GetNativeSize(VisualElement view, double widthConstraint, double heightConstraint)
 		{
 			Performance.Start(out string reference);
 
@@ -247,7 +246,6 @@ namespace Xamarin.Forms.Platform.iOS
 			if (_appeared == false)
 				return;
 
-			Page.Platform = this;
 			AddChild(Page);
 
 			Page.DescendantRemoved += HandleChildRemoved;
@@ -263,7 +261,6 @@ namespace Xamarin.Forms.Platform.iOS
 			_renderer.View.BackgroundColor = UIColor.White;
 			_renderer.View.ContentMode = UIViewContentMode.Redraw;
 
-			Page.Platform = this;
 			AddChild(Page);
 
 			Page.DescendantRemoved += HandleChildRemoved;
@@ -344,9 +341,10 @@ namespace Xamarin.Forms.Platform.iOS
 			var alert = UIAlertController.Create(arguments.Title, null, UIAlertControllerStyle.ActionSheet);
 			var window = new UIWindow { BackgroundColor = Color.Transparent.ToUIColor() };
 
-			if (arguments.Cancel != null)
+			// Clicking outside of an ActionSheet is an implicit cancel on iPads. If we don't handle it, it freezes the app.
+			if (arguments.Cancel != null || UIDevice.CurrentDevice.UserInterfaceIdiom == UIUserInterfaceIdiom.Pad)
 			{
-				alert.AddAction(CreateActionWithWindowHide(arguments.Cancel, UIAlertActionStyle.Cancel, () => arguments.SetResult(arguments.Cancel), window));
+				alert.AddAction(CreateActionWithWindowHide(arguments.Cancel ?? "", UIAlertActionStyle.Cancel, () => arguments.SetResult(arguments.Cancel), window));
 			}
 
 			if (arguments.Destruction != null)
